@@ -1,11 +1,12 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
-const path = require('path');
 const fs = require('fs');
 const mysql = require('mysql2');
 // Menggunakan GoogleGenAI dari SDK resmi terbaru (@google/genai)
-const { GoogleGenAI, Type } = require('@google/genai'); 
+const { GoogleGenAI, Type } = require('@google/genai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,7 +38,7 @@ db.connect((err) => {
 // INISIALISASI GEMINI API CLIENT
 // ==========================================
 // Inisialisasi menggunakan SDK @google/genai terbaru
-const ai = new GoogleGenAI({ apiKey: "AQ.Ab8RN6LFbTwk68eve4u63hI2S2sBumuZDcYkWAoyHZEh4ltJSw" });
+const ai = new GoogleGenAI({ apiKey: process.env.GCP_API_KEY });
 
 // Fungsi helper untuk mengubah file lokal menjadi objek inlineData untuk SDK baru
 function fileToGenerativePart(filePath, mimeType) {
