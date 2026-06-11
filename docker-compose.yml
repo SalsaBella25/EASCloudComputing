@@ -8,21 +8,17 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      # Menggunakan root password sesuai .env jika ada, jika tidak izinkan kosong
-      MYSQL_ROOT_PASSWORD: "${DB_PASS:-}"
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes" # Diperlukan karena server.js menggunakan password kosong
-      MYSQL_DATABASE: "${DB_NAME:-skinscan_db}"
-    # Mengekspos port 3306 untuk DB, dan port 3000 untuk App
-    # Port app (3000) diekspos melalui service db karena container app menggunakan network_mode service ini.
+      # Menggunakan password baru sesuai request kamu
+      MYSQL_ROOT_PASSWORD: "SkinScanDB"
+      # Menggunakan nama database baru sesuai request kamu
+      MYSQL_DATABASE: "skinscan-db"
     ports:
       - "3306:3306"
-      - "3000:3000"
-      - "8080:80" # Port Frontend
     volumes:
-      # Mapping file SQL untuk menginisialisasi skema saat pertama kali build
       - ./database.sql:/docker-entrypoint-initdb.d/init.sql
-      # Volume untuk persistensi data MySQL
       - db_data:/var/lib/mysql
+    networks:
+      - database_vpc # Ditempatkan di VPC Database sesuai standar PDF
 
   app:
     build: ./backend
@@ -32,24 +28,37 @@ services:
       - ./backend/.env
     environment:
       - PORT=3000
+    ports:
+      - "3000:3000"
     depends_on:
       - db
-    # TRIK CLOUD NATIVE / SIDECAR PATTERN:
-    # Karena file `server.js` tidak boleh diubah (masih hardcode ke 'localhost'),
-    # kita gunakan network_mode "service:db". Dengan konfigurasi ini, container 
-    # Node.js akan berada di namespace jaringan yang sama dengan container MySQL.
-    # Sehingga Node.js dapat terhubung ke MySQL menggunakan 'localhost' dengan aman.
-    network_mode: "service:db"
     volumes:
       - ./backend/uploads:/usr/src/app/uploads
+    networks:
+      - backend_vpc   # Masuk ke VPC Backend
+      - database_vpc  # Jembatan khusus untuk mengakses kontainer DB
 
   frontend:
     image: nginx:alpine
     container_name: skinscan_frontend
     restart: unless-stopped
-    network_mode: "service:db"
+    ports:
+      - "8080:80"
     volumes:
       - ./Frontend:/usr/share/nginx/html
+    networks:
+      - frontend_vpc  # Ditempatkan di VPC Frontend sesuai standar PDF
+
+# =========================================================================
+# SIMULASI ARSITEKTUR CLOUD (SEGMENTASI VPC SEPERTI KETENTUAN TUGAS)
+# =========================================================================
+networks:
+  frontend_vpc:
+    driver: bridge
+  backend_vpc:
+    driver: bridge
+  database_vpc:
+    driver: bridge
 
 volumes:
   db_data:
